@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>實驗室畢業生統計系統</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <h1>實驗室畢業生統計系統</h1>
+    <div>
+        <label for="school">學校：</label>
+        <select id="school">
+            <option value="1">交大</option>
+            <option value="2">中央</option>
+            <option value="3">清大</option>
+        </select>
+    </div>
+    <div>
+        <label for="name">教授名稱：</label>
+        <input type="text" id="name">
+    </div>
+    <div>
+        <label for="sample_count">參考最近碩士畢業生的數量：</label>
+        <input type="number" id="sample_count">
+    </div>
+    <div>
+        <label for="filter_cnt">欲過濾的系所數量：</label>
+        <input type="number" id="filter_cnt">
+    </div>
+    <button onclick="searchData()">搜尋</button>
+    <div id="result"></div>
+
+    <script>
+        async function searchData() {
+            const data = {
+                school: document.getElementById('school').value,
+                name: document.getElementById('name').value,
+                sample_count: document.getElementById('sample_count').value,
+                filter_cnt: document.getElementById('filter_cnt').value
+            };
+
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                displayResult(result);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function displayResult(result) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `
+                <h2>搜尋結果</h2>
+                <p>最近 ${result.sample_count} 筆碩士畢業生紀錄中：</p>
+                <p>${result.graduate_2_years} 位2年左右畢業</p>
+                <p>${result.graduate_2_3_years} 位2-3年畢業</p>
+                <p>${result.graduate_3_plus_years} 位3年以上畢業</p>
+            `;
+        }
+    </script>
+</body>
+</html> 
