@@ -75,46 +75,140 @@
             text-align: center;
             margin: 20px 0;
         }
+        
+        .school-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .school-button {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #4CAF50;
+            background-color: white;
+            color: #4CAF50;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .school-button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .department-filters {
+            display: none;
+            margin-top: 10px;
+        }
+        
+        .department-input {
+            margin-bottom: 10px;
+        }
+        
+        .detailed-results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .thesis-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .graduation-category {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
     <h1>實驗室畢業生統計系統</h1>
+    
     <div class="form-group">
-        <label for="school">學校：</label>
-        <select id="school">
-            <option value="1">交大</option>
-            <option value="2">中央</option>
-            <option value="3">清大</option>
-        </select>
+        <label>學校：</label>
+        <div class="school-buttons">
+            <button class="school-button" onclick="selectSchool(1)">交大</button>
+            <button class="school-button" onclick="selectSchool(2)">中央</button>
+            <button class="school-button" onclick="selectSchool(3)">清大</button>
+        </div>
+        <input type="hidden" id="school" value="">
     </div>
+    
     <div class="form-group">
         <label for="name">教授名稱：</label>
         <input type="text" id="name">
         <div id="name-error" class="error">請輸入教授名稱</div>
     </div>
+    
     <div class="form-group">
         <label for="sample_count">參考最近碩士畢業生的數量：</label>
         <input type="number" id="sample_count" min="1">
         <div id="sample-error" class="error">請輸入大於0的數字</div>
     </div>
+    
     <div class="form-group">
-        <label for="filter_cnt">欲過濾的系所數量（選填）：</label>
-        <input type="number" id="filter_cnt" min="0">
+        <label for="filter_cnt">欲過濾的系所數量：</label>
+        <input type="number" id="filter_cnt" min="0" onchange="updateDepartmentFilters()">
         <div id="filter-error" class="error">請輸入有效的數字</div>
+        <div id="department-filters" class="department-filters"></div>
     </div>
+    
     <button onclick="searchData()">搜尋</button>
     <div class="loading" id="loading">搜尋中，請稍候...</div>
     <div id="result"></div>
 
     <script>
+        let selectedSchool = null;
+
+        function selectSchool(school) {
+            selectedSchool = school;
+            document.getElementById('school').value = school;
+            
+            // 更新按鈕樣式
+            document.querySelectorAll('.school-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        function updateDepartmentFilters() {
+            const filterCount = parseInt(document.getElementById('filter_cnt').value) || 0;
+            const container = document.getElementById('department-filters');
+            container.style.display = filterCount > 0 ? 'block' : 'none';
+            
+            container.innerHTML = '';
+            for (let i = 0; i < filterCount; i++) {
+                container.innerHTML += `
+                    <div class="department-input">
+                        <label for="dept_${i}">系所 ${i + 1}：</label>
+                        <input type="text" id="dept_${i}" class="department-filter">
+                    </div>
+                `;
+            }
+        }
+
         async function searchData() {
             // 重置錯誤訊息
             document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '';
             
             // 驗證輸入
+            if (!selectedSchool) {
+                alert('請選擇學校');
+                return;
+            }
+            
             const name = document.getElementById('name').value.trim();
-            const sample_count = document.getElementById('sample_count').value;
-            const filter_cnt = document.getElementById('filter_cnt').value;
+            const sample_count = parseInt(document.getElementById('sample_count').value);
+            const filter_cnt = parseInt(document.getElementById('filter_cnt').value) || 0;
             
             let hasError = false;
             
@@ -128,23 +222,26 @@
                 hasError = true;
             }
             
-            if (filter_cnt && filter_cnt < 0) {
-                document.getElementById('filter-error').style.display = 'block';
-                hasError = true;
-            }
-            
             if (hasError) return;
 
+            // 收集系所過濾資料
+            const departments = [];
+            document.querySelectorAll('.department-filter').forEach(input => {
+                if (input.value.trim()) {
+                    departments.push(input.value.trim());
+                }
+            });
+
             const data = {
-                school: document.getElementById('school').value,
+                school: selectedSchool.toString(),  // 確保轉換為字串
                 name: name,
                 sample_count: sample_count,
-                filter_cnt: filter_cnt || 0
+                filter_cnt: filter_cnt,
+                departments: departments
             };
 
             try {
                 document.getElementById('loading').style.display = 'block';
-                document.getElementById('result').innerHTML = '';
                 
                 const response = await fetch('/search', {
                     method: 'POST',
@@ -154,16 +251,17 @@
                     body: JSON.stringify(data)
                 });
                 
+                const result = await response.json();
+                
                 if (!response.ok) {
-                    throw new Error('搜尋失敗');
+                    throw new Error(result.error || '搜尋失敗');
                 }
                 
-                const result = await response.json();
                 displayResult(result);
             } catch (error) {
-                document.getElementById('result').innerHTML = `
+                resultDiv.innerHTML = `
                     <div style="color: red; padding: 10px;">
-                        發生錯誤：${error.message}
+                        錯誤：${error.message}
                     </div>`;
             } finally {
                 document.getElementById('loading').style.display = 'none';
@@ -172,7 +270,7 @@
 
         function displayResult(result) {
             const resultDiv = document.getElementById('result');
-            resultDiv.innerHTML = `
+            let html = `
                 <h2>搜尋結果</h2>
                 <p>最近 ${result.sample_count} 筆碩士畢業生紀錄中：</p>
                 <div style="margin-left: 20px;">
@@ -181,6 +279,32 @@
                     <p>⚫ ${result.graduate_3_plus_years} 位3年以上畢業</p>
                 </div>
             `;
+
+            // 顯示詳細資訊
+            if (result.detailed_results) {
+                html += `
+                    <div class="detailed-results">
+                        <h3>詳細資訊</h3>
+                        ${formatDetailedResults(result.detailed_results)}
+                    </div>
+                `;
+            }
+
+            resultDiv.innerHTML = html;
+        }
+
+        function formatDetailedResults(detailedResults) {
+            // 將詳細結果字串轉換為HTML格式
+            return detailedResults.split('\n').map(line => {
+                if (line.startsWith('============')) {
+                    return `<h4 class="graduation-category">${line.replace(/=/g, '')}</h4>`;
+                } else if (line.startsWith('----')) {
+                    return '<hr>';
+                } else if (line.trim()) {
+                    return `<p>${line}</p>`;
+                }
+                return '';
+            }).join('');
         }
     </script>
 </body>
