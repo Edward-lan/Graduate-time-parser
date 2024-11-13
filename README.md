@@ -9,5 +9,7 @@
 
 入學0801為起始日，口試日期即畢業日
 
-## fork from [Graduate_time_parser](https://github.com/DeNT15T/Graduate_time_parser) [Graduate_time_parser](https://github.com/frankxaio/Graduate_time_parser) 
+## Fork from 
+    DeNT15T[Graduate_time_parser](https://github.com/DeNT15T/Graduate_time_parser) 
+    frankxaio[Graduate_time_parser](https://github.com/frankxaio/Graduate_time_parser) 
 
